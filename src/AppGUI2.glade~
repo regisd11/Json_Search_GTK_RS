@@ -713,7 +713,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkEntry" id="SecProgIdSearchReturnEntry">
+                              <object class="GtkEntry" id="SecProgSearchReturnEntry">
                                 <property name="height_request">35</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>

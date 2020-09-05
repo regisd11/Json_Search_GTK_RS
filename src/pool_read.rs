@@ -5,13 +5,11 @@ use serde_json::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use std::time::Instant;
 
 pub fn return_pool_load(
     ids_searched: &String,
     file_src: &String,
 ) -> Result<Vec<PoolReturn>, Error> {
-    let now = Instant::now();
     let data_path = Path::new(&file_src);
     let data = File::open(data_path).unwrap();
     let reader = BufReader::new(data);
@@ -32,7 +30,6 @@ pub fn return_pool_load(
 }
 
 pub fn pool_load(ids_searched: &String, file_src: &String) -> Result<Vec<Pool>, Error> {
-    let now = Instant::now();
     let data_path = Path::new(&file_src);
     let data = File::open(data_path).unwrap();
     let reader = BufReader::new(data);
