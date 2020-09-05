@@ -25,7 +25,6 @@ mod SecurityPosition_read;
 mod SecuritizationProgram_read;
 
 //uses
-use credit_contract_structure::CreditContract;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -34,7 +33,7 @@ use gtk::{
     Paned,
 };
 use sourceview::{
-    Buffer, BufferExt, LanguageManager, LanguageManagerExt, StyleSchemeExt, StyleSchemeManager,
+    Buffer, BufferExt, LanguageManager, LanguageManagerExt,  StyleSchemeManager,
     StyleSchemeManagerExt, View,
 };
 use std::fs;
@@ -57,9 +56,6 @@ impl Message {
     }
 }
 
-pub enum Structure {
-    CreditContract,
-}
 
 fn build_ui(application: &gtk::Application) {
     let glade_src = include_str!("AppGUI2.glade");
@@ -186,7 +182,7 @@ fn build_ui(application: &gtk::Application) {
         .set_buffer(Some(&securitisation_program_call_crm_json_buffer));
 
     
-    //Return Object
+    //Return Objects
     let pick_folder_return_btn: FileChooserButton = builder
         .get_object("PickFolderReturnBtn")
         .expect("Cound't get PickFolderReturnBtn");
@@ -247,30 +243,30 @@ fn build_ui(application: &gtk::Application) {
     let cc_return_json_crm_buffer = Buffer::new_with_language(&language);
     cc_return_json_crm_buffer.set_style_scheme(Some(&my_style));
     cc_return_json_crm.set_buffer(Some(&cc_return_json_crm_buffer));
-    let mt_return_json_expo: View = builder
+    let mkt_return_json_expo: View = builder
         .get_object("returnMarketTransactionExpoJson")
         .expect("Cound't get returnMarketTransactionExpoJson");
-    let mt_return_json_expo_buffer = Buffer::new_with_language(&language);
-    mt_return_json_expo_buffer.set_style_scheme(Some(&my_style));
-    mt_return_json_expo.set_buffer(Some(&mt_return_json_expo_buffer));
-    let mt_return_json_crm: View = builder
+    let mkt_return_json_expo_buffer = Buffer::new_with_language(&language);
+    mkt_return_json_expo_buffer.set_style_scheme(Some(&my_style));
+    mkt_return_json_expo.set_buffer(Some(&mkt_return_json_expo_buffer));
+    let mkt_return_json_crm: View = builder
         .get_object("returnMarketTransactionCrmJson")
         .expect("Cound't get returnMarketTransactionCrmJson");
-    let mt_return_json_crm_buffer = Buffer::new_with_language(&language);
-    mt_return_json_crm_buffer.set_style_scheme(Some(&my_style));
-    mt_return_json_crm.set_buffer(Some(&mt_return_json_crm_buffer));
+    let mkt_return_json_crm_buffer = Buffer::new_with_language(&language);
+    mkt_return_json_crm_buffer.set_style_scheme(Some(&my_style));
+    mkt_return_json_crm.set_buffer(Some(&mkt_return_json_crm_buffer));
     let ps_return_json_expo: View = builder
         .get_object("returnSecurityPositionExpoJson")
         .expect("Cound't get returnSecurityPositionExpoJson");
     let ps_return_json_expo_buffer = Buffer::new_with_language(&language);
     ps_return_json_expo_buffer.set_style_scheme(Some(&my_style));
-    ps_return_json_expo.set_buffer(Some(&mt_return_json_expo_buffer));
+    ps_return_json_expo.set_buffer(Some(&ps_return_json_expo_buffer));
     let ps_return_json_crm: View = builder
         .get_object("returnSecurityPositionCrmJson")
         .expect("Cound't get returnSecurityPositionCrmJson");
     let ps_return_json_crm_buffer = Buffer::new_with_language(&language);
     ps_return_json_crm_buffer.set_style_scheme(Some(&my_style));
-    ps_return_json_crm.set_buffer(Some(&mt_return_json_crm_buffer));
+    ps_return_json_crm.set_buffer(Some(&ps_return_json_crm_buffer));
     let crm_return_json: View = builder
         .get_object("returnCrmJson")
         .expect("Cound't get returnCrmJson");
@@ -354,6 +350,7 @@ fn build_ui(application: &gtk::Application) {
 
     search_call_btn.connect_clicked(
         clone!( 
+            @weak crm_call_json,
             @weak pool_call_json_expo,
             @weak cc_call_json_expo,
             @weak cc_call_json_crm,
@@ -612,6 +609,32 @@ fn build_ui(application: &gtk::Application) {
                         }
                         glib::Continue(true)
                     });
+
+                    //Crms Specific
+                    let (sender_crm, receiver_crm) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    thread::spawn(move || {
+                        if crmv != "".to_string() && idcrmv !="".to_string() {
+                            let mut thread_message = Message::new();
+                            let crm_call_data_tmp = crm_read::crm_load(&idcrmv ,&crmv);
+                            let mut crm_call_data = String::new();
+                            for elem in crm_call_data_tmp.iter() {
+                                let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                crm_call_data.push_str(&ser_elem);
+                        }
+                        
+                        thread_message.expos = crm_call_data;
+                
+                        let _ = sender_crm.send(thread_message);
+                        }
+                    });
+                    receiver_crm.attach(None, move |msg| {
+                        match msg.expos {
+                            text => crm_call_json.get_buffer().unwrap().set_text(&text),
+                        }
+                        
+                        glib::Continue(true)
+                    });
+
                 }
             }
         )            
@@ -678,13 +701,19 @@ fn build_ui(application: &gtk::Application) {
 
     search_return_btn.connect_clicked(
         clone!(
+            @weak crm_return_json,
             @weak pool_return_json_expo,
+            @weak cc_return_json_expo,
+            @weak cc_return_json_crm,
+            @weak mkt_return_json_expo,
+            @weak mkt_return_json_crm,
+            @weak ps_return_json_expo,
+            @weak ps_return_json_crm,
+            @weak securitisation_program_return_expo_json,
+            @weak securitisation_program_return_crm_json,
             @weak update_search_screen ,
-            @weak primary_panel,
-            @weak cc_return_json_expo
+            @weak primary_panel
             => move |_|{
-                primary_panel.hide();
-                update_search_screen.show();
                 let tmp : PathBuf = pick_folder_return_btn.get_filename().unwrap();
                 let folder: String = tmp.into_os_string().into_string().unwrap();
                 let idsearchvcc: String = cc_id_search_return_entry.get_text().to_string();
@@ -695,31 +724,268 @@ fn build_ui(application: &gtk::Application) {
                 let idcrmv: String = crm_search_return_entry.get_text().to_string().split(";").collect();
                 let creditcontracttmp = credit_contract_return_cb.get_active_text().unwrap().to_string();
                 let creditcontractv= format!(r"{}\{}", folder, creditcontracttmp);
+                let crmtmp = crm_return_cb.get_active_text().unwrap().to_string();
+                let crmv= format!(r"{}\{}", folder, crmtmp);
                 let pooltmp  = pool_return_cb.get_active_text().unwrap().to_string();
                 let poolv= format!(r"{}\{}", folder, pooltmp);
                 let markettransactmp = market_transaction_return_cb.get_active_text().unwrap().to_string();
                 let markettransactv= format!(r"{}\{}", folder, markettransactmp);
                 let securitypostmp = security_position_return_cb.get_active_text().unwrap().to_string();
                 let securityposv= format!(r"{}\{}", folder, securitypostmp);
+                let securitizationpgmtmp = secprog_return_cb.get_active_text().unwrap().to_string();
+                let securitizationpgmv= format!(r"{}\{}", folder, securitizationpgmtmp);
 
-                let pool_return_data_tmp = pool_read::return_pool_load(&idsearchvpool ,&poolv);
-                let mut return_pool_data = String::new();
-                for elem in pool_return_data_tmp.iter() {
-                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                    return_pool_data.push_str(&ser_elem);
-                }
-                pool_return_json_expo.get_buffer().unwrap().set_text(&return_pool_data);
+                //POOLS
+                let (sender_pool, receiver_pool) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                thread::spawn(move || {
+                    if idsearchvpool != "".to_string() && poolv !="".to_string() {
+                        let pool_call_data_tmp = pool_read::pool_load(&idsearchvpool ,&poolv);
+                        let mut pool_call_data = String::new();
+                        for elem in pool_call_data_tmp.iter() {
+                        let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                        &pool_call_data.push_str(&ser_elem);            
+                    }
+                    let _ = sender_pool.send(String::from(&pool_call_data));
+                    }
+                });
+                receiver_pool.attach(None, move |msg| {
+                    match msg {
+                        text => pool_return_json_expo.get_buffer().unwrap().set_text(&text),
+                    }
+                    glib::Continue(true)
+                });
 
-                let cc_data_tmp = credit_contract_read::cc_load(&idsearchvcc ,&creditcontractv);
-                let mut cc_data = String::new();
-                for elem in cc_data_tmp.iter() {
-                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                    cc_data.push_str(&ser_elem);
-                }
-                cc_return_json_expo.get_buffer().unwrap().set_text(&cc_data);
+                let (sender_cc, receiver_cc) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                let crm_ccv= crmv.to_owned();
+                thread::spawn(move || {
+                    if idsearchvcc != "".to_string() && creditcontractv !="".to_string() {
+                        let mut thread_message = Message::new();
+                        let cc_return_data_tmp = credit_contract_read::cc_load(&idsearchvcc ,&creditcontractv);
+                        let mut cc_return_data = String::new();
+                        for elem in cc_return_data_tmp.iter() {
+                            let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                            cc_return_data.push_str(&ser_elem);
+                    }
 
-                update_search_screen.hide();
-                primary_panel.show();
+                    let cc_struct = match cc_return_data_tmp {
+                        Ok(contracts) => contracts,
+                        Err(error) => panic!("Problem occured: {:?}", error)
+                    };
+
+                    let mut cc_crm_return_data = String::new();
+                    let param = cc_struct.len();
+                    if param != 0  {
+                        let crm_result = crm_read::crm_cc(&cc_struct);
+                        let crm_list = match crm_result {
+                            Ok(crm) => crm,
+                            Err(error) => panic!("Problem occured: {:?}", error)
+                        };
+                        
+                        let cc_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_ccv);
+                            for elem in cc_crm_return_data_tmp.iter() {
+                                let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                cc_crm_return_data.push_str(&ser_elem);
+                            }
+                    }
+                    
+                    thread_message.crms = cc_crm_return_data;
+                    thread_message.expos = cc_return_data;
+
+                    let _ = sender_cc.send(thread_message);
+                    }
+                });
+                receiver_cc.attach(None, move |msg| {
+                    match msg.expos {
+                        text => cc_return_json_expo.get_buffer().unwrap().set_text(&text),
+                    }
+                    match msg.crms {
+                        text => cc_return_json_crm.get_buffer().unwrap().set_text(&text),
+                    }
+
+                    glib::Continue(true)
+                });
+
+                // Market Transactions
+                let (sender_mkt, receiver_mkt) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                let crm_mkt= crmv.to_owned();
+                thread::spawn(move || {
+                    if idsearchvmkt != "".to_string() && markettransactv !="".to_string() {
+                        let mut thread_message = Message::new();
+                        let mkt_return_data_tmp = MarketTransaction_read::mkt_load(&idsearchvmkt ,&markettransactv);
+                        let mut mkt_return_data = String::new();
+                        for elem in mkt_return_data_tmp.iter() {
+                            let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                            mkt_return_data.push_str(&ser_elem);
+                    }
+            
+                    let mkt_struct = match mkt_return_data_tmp {
+                        Ok(contracts) => contracts,
+                        Err(error) => panic!("Problem occured: {:?}", error)
+                    };
+            
+                    let mut mkt_crm_return_data = String::new();
+                    let param = mkt_struct.len();
+                    if param != 0 {
+                        let crm_result = crm_read::crm_mkt(&mkt_struct);
+                        let crm_list = match crm_result {
+                            Ok(crm) => crm,
+                            Err(error) => panic!("Problem occured: {:?}", error)
+                        };
+                        
+                        let mkt_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_mkt);
+                            for elem in mkt_crm_return_data_tmp.iter() {
+                                let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                mkt_crm_return_data.push_str(&ser_elem);
+                            }
+                    
+                    }
+                    
+                    thread_message.crms = mkt_crm_return_data;
+                    thread_message.expos = mkt_return_data;
+            
+                    let _ = sender_mkt.send(thread_message);
+                    }
+                });
+                receiver_mkt.attach(None, move |msg| {
+                    match msg.expos {
+                        text => mkt_return_json_expo.get_buffer().unwrap().set_text(&text),
+                    }
+                    match msg.crms {
+                        text => mkt_return_json_crm.get_buffer().unwrap().set_text(&text),
+                    }
+
+                    glib::Continue(true)
+                });
+
+                //Security Positions
+                let (sender_pos_sec, receiver_pos_sec) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                let crm_pos_secv= crmv.to_owned();
+                thread::spawn(move || {
+                    if idsearchvsecpos != "".to_string() && securityposv !="".to_string() {
+                        let mut thread_message = Message::new();
+                        let pos_sec_return_data_tmp = SecurityPosition_read::secpos_load(&idsearchvsecpos ,&securityposv);
+                        let mut pos_sec_return_data = String::new();
+                        for elem in pos_sec_return_data_tmp.iter() {
+                            let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                            pos_sec_return_data.push_str(&ser_elem);
+                    }
+                    let pos_sec_struct = match pos_sec_return_data_tmp {
+                        Ok(contracts) => contracts,
+                        Err(error) => panic!("Problem occured: {:?}", error)
+                    };
+            
+                    let mut pos_sec_crm_return_data = String::new();
+                    let param = pos_sec_struct.len();
+                    if param != 0 {
+                        let crm_result = crm_read::crm_pos_sec(&pos_sec_struct);
+                        let crm_list = match crm_result {
+                            Ok(crm) => crm,
+                            Err(error) => panic!("Problem occured: {:?}", error)
+                        };
+                        
+                        let pos_sec_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_pos_secv);
+                            for elem in pos_sec_crm_return_data_tmp.iter() {
+                                let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                pos_sec_crm_return_data.push_str(&ser_elem);
+                            }
+                    
+                    }
+                    
+                    thread_message.crms = pos_sec_crm_return_data;
+                    thread_message.expos = pos_sec_return_data;
+            
+                    let _ = sender_pos_sec.send(thread_message);
+                    }
+                });
+                receiver_pos_sec.attach(None, move |msg| {
+                    match msg.expos {
+                        text => ps_return_json_expo.get_buffer().unwrap().set_text(&text),
+                    }
+                    match msg.crms {
+                        text => ps_return_json_crm.get_buffer().unwrap().set_text(&text),
+                    }
+
+                    glib::Continue(true)
+                });
+
+                //Securitization Programs
+                let (sender_sec_pgm, receiver_sec_pgm) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                let crm_sec_pgmv= crmv.to_owned();
+                thread::spawn(move || {
+                    if idsearchvsecprog != "".to_string() && securitizationpgmv !="".to_string() {
+                        let mut thread_message = Message::new();
+                        let sec_pgm_return_data_tmp = SecuritizationProgram_read::secpgm_load(&idsearchvsecprog ,&securitizationpgmv);
+                        let mut sec_pgm_return_data = String::new();
+                        for elem in sec_pgm_return_data_tmp.iter() {
+                            let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                            sec_pgm_return_data.push_str(&ser_elem);
+                    }
+                    let sec_pgm_struct = match sec_pgm_return_data_tmp {
+                        Ok(contracts) => contracts,
+                        Err(error) => panic!("Problem occured: {:?}", error)
+                    };
+            
+                    let mut sec_pgm_crm_return_data = String::new();
+                    let param = sec_pgm_struct.len();
+                    if param != 0 {
+                        let crm_result = crm_read::crm_pgm_sec(&sec_pgm_struct);
+                        let crm_list = match crm_result {
+                            Ok(crm) => crm,
+                            Err(error) => panic!("Problem occured: {:?}", error)
+                        };
+                        
+                        let sec_pgm_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_sec_pgmv);
+                            for elem in sec_pgm_crm_return_data_tmp.iter() {
+                                let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                sec_pgm_crm_return_data.push_str(&ser_elem);
+                            }
+                    
+                    }
+                    
+                    thread_message.crms = sec_pgm_crm_return_data;
+                    thread_message.expos = sec_pgm_return_data;
+            
+                    let _ = sender_sec_pgm.send(thread_message);
+                    }
+                });
+                receiver_sec_pgm.attach(None, move |msg| {
+                    match msg.expos {
+                        text => securitisation_program_return_expo_json.get_buffer().unwrap().set_text(&text),
+                    }
+                    match msg.crms {
+                        text => securitisation_program_return_crm_json.get_buffer().unwrap().set_text(&text),
+                    }
+                    glib::Continue(true)
+                });
+
+
+                //Crms Specific
+                let (sender_crm, receiver_crm) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                thread::spawn(move || {
+                    if crmv != "".to_string() && idcrmv !="".to_string() {
+                        let mut thread_message = Message::new();
+                        let crm_return_data_tmp = crm_read::crm_load(&idcrmv ,&crmv);
+                        let mut crm_return_data = String::new();
+                        for elem in crm_return_data_tmp.iter() {
+                            let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                            crm_return_data.push_str(&ser_elem);
+                    }
+                    
+                    thread_message.expos = crm_return_data;
+            
+                    let _ = sender_crm.send(thread_message);
+                    }
+                });
+                receiver_crm.attach(None, move |msg| {
+                    match msg.expos {
+                        text => crm_return_json.get_buffer().unwrap().set_text(&text),
+                    }
+                    
+                    glib::Continue(true)
+                });
+                
+                
+
             }
         )
     );
