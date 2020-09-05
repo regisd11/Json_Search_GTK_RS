@@ -15,10 +15,12 @@ pub fn crm_load(ids_searched: &String, file_src: &String) -> Result<Vec<Crm>, Er
     let data_path = Path::new(&file_src);
     let data = File::open(data_path).unwrap();
     let reader = BufReader::new(data);
-    let to_search: Vec<&str> = ids_searched.split(";").collect();
+    let mut to_search: Vec<&str> = ids_searched.split(";").collect();
+    to_search.sort();
+    to_search.dedup();
+    println!("{:?}", to_search);
     let mut out_array = Vec::<Crm>::new();
     let array: Vec<Crm> = serde_json::from_reader(reader)?;
-
     for expo in to_search.iter() {
         let tmp = array
             .par_iter()

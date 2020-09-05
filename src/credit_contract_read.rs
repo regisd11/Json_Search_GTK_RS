@@ -10,7 +10,9 @@ pub fn cc_load(ids_searched: &String, file_src: &String) -> Result<Vec<CreditCon
     let data = File::open(data_path).unwrap();
     let reader = BufReader::new(data);
     let array: Vec<CreditContract> = serde_json::from_reader(reader)?;
-    let to_search: Vec<&str> = ids_searched.split(";").collect();
+    let mut to_search: Vec<&str> = ids_searched.split(";").collect();
+    to_search.sort();
+    to_search.dedup();
     let mut out_array = Vec::<CreditContract>::new();
 
     for expo in to_search.iter() {

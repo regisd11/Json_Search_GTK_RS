@@ -23,10 +23,10 @@
   </object>
   <object class="GtkApplicationWindow" id="window1">
     <property name="width_request">866</property>
-    <property name="height_request">900</property>
+    <property name="height_request">743</property>
     <property name="can_focus">False</property>
     <child>
-      <object class="GtkOverlay">
+      <object class="GtkGrid">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -1763,7 +1763,7 @@
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Market Transaction Call</property>
+                                <property name="label" translatable="yes">Security Position Call</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1895,7 +1895,7 @@
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Market Transaction Return Json</property>
+                                <property name="label" translatable="yes">Security Position Return</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -2519,36 +2519,46 @@
             </child>
           </object>
           <packing>
-            <property name="index">5</property>
+            <property name="left_attach">0</property>
+            <property name="top_attach">0</property>
           </packing>
         </child>
-        <child type="overlay">
-          <object class="GtkBox" id="updateSearchScreen">
+        <child>
+          <object class="GtkGrid">
+            <property name="height_request">25</property>
+            <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
-            <property name="orientation">vertical</property>
-            <property name="spacing">15</property>
             <child>
-              <object class="GtkSpinner">
-                <property name="width_request">108</property>
-                <property name="height_request">900</property>
+              <object class="GtkLabel" id="state_search">
+                <property name="width_request">990</property>
+                <property name="height_request">25</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="hexpand">True</property>
-                <property name="vexpand">True</property>
+                <property name="margin_start">6</property>
+                <property name="single_line_mode">True</property>
+                <property name="xalign">0</property>
+              </object>
+              <packing>
+                <property name="left_attach">0</property>
+                <property name="top_attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinner" id="update_spinner">
+                <property name="height_request">25</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="active">True</property>
               </object>
               <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">0</property>
+                <property name="left_attach">1</property>
+                <property name="top_attach">0</property>
               </packing>
             </child>
           </object>
           <packing>
-            <property name="index">-1</property>
+            <property name="left_attach">0</property>
+            <property name="top_attach">1</property>
           </packing>
         </child>
       </object>
