@@ -400,7 +400,7 @@ fn build_ui(application: &gtk::Application) {
                             &pool_call_data.push_str(&ser_elem);            
                         }
                         
-                        let _ = sender_pool.send(String::from(&pool_call_data));
+                            let _ = sender_pool.send(String::from(&pool_call_data));
                         }
                         let mut thread_finished = thread_finished_poo.lock().unwrap();
                         *thread_finished +=1;
@@ -427,33 +427,33 @@ fn build_ui(application: &gtk::Application) {
                             for elem in cc_call_data_tmp.iter() {
                                 let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
                                 cc_call_data.push_str(&ser_elem);
-                        }
+                            }
 
-                        let cc_struct = match cc_call_data_tmp {
-                            Ok(contracts) => contracts,
-                            Err(error) => panic!("Problem occured: {:?}", error)
-                        };
-
-                        let mut cc_crm_call_data = String::new();
-                        let param = cc_struct.len();
-                            if param != 0  {
-                            let crm_result = crm_read::crm_cc(&cc_struct);
-                            let crm_list = match crm_result {
-                                Ok(crm) => crm,
+                            let cc_struct = match cc_call_data_tmp {
+                                Ok(contracts) => contracts,
                                 Err(error) => panic!("Problem occured: {:?}", error)
                             };
-                            
-                            let cc_crm_call_data_tmp = crm_read::crm_load(&crm_list ,&crm_ccv);
-                                for elem in cc_crm_call_data_tmp.iter() {
-                                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                                    cc_crm_call_data.push_str(&ser_elem);
+
+                            let mut cc_crm_call_data = String::new();
+                            let param = cc_struct.len();
+                                if param != 0  {
+                                    let crm_result = crm_read::crm_cc(&cc_struct);
+                                    let crm_list = match crm_result {
+                                        Ok(crm) => crm,
+                                        Err(error) => panic!("Problem occured: {:?}", error)
+                                    };
+                                    
+                                    let cc_crm_call_data_tmp = crm_read::crm_load(&crm_list ,&crm_ccv);
+                                        for elem in cc_crm_call_data_tmp.iter() {
+                                            let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                            cc_crm_call_data.push_str(&ser_elem);
+                                        }
                                 }
-                        }
-                        
-                        thread_message.crms = cc_crm_call_data;
-                        thread_message.expos = cc_call_data;
-                        
-                        let _ = sender_cc.send(thread_message);
+                            
+                            thread_message.crms = cc_crm_call_data;
+                            thread_message.expos = cc_call_data;
+                            
+                            let _ = sender_cc.send(thread_message);
                         }
                         let mut thread_finished = thread_finished_cc.lock().unwrap();
                         *thread_finished +=1;
@@ -750,9 +750,15 @@ fn build_ui(application: &gtk::Application) {
             @weak ps_return_json_expo,
             @weak ps_return_json_crm,
             @weak securitisation_program_return_expo_json,
-            @weak securitisation_program_return_crm_json
+            @weak securitisation_program_return_crm_json,
+            @weak update_spinner,
+            @weak update_message
             => move |_|{
                 if pick_folder_return_btn.get_filename().is_some() {
+                    update_message.set_text("searching ...");
+                    let thread_finished = Arc::new(Mutex::new(0u32));
+                    let (sender_updtade, receiver_update) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+                    update_spinner.start();
                     let tmp : PathBuf = pick_folder_return_btn.get_filename().unwrap();
                     let folder: String = tmp.into_os_string().into_string().unwrap();
                     let idsearchvcc: String = cc_id_search_return_entry.get_text().to_string();
@@ -776,6 +782,7 @@ fn build_ui(application: &gtk::Application) {
 
                     //POOLS
                     let (sender_pool, receiver_pool) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    let (thread_finished_poo, sender_update_poo) = (thread_finished.clone(), sender_updtade.clone());
                     thread::spawn(move || {
                         if idsearchvpool != "".to_string() && poolv !="".to_string() {
                             let pool_call_data_tmp = pool_read::pool_load(&idsearchvpool ,&poolv);
@@ -786,6 +793,9 @@ fn build_ui(application: &gtk::Application) {
                         }
                         let _ = sender_pool.send(String::from(&pool_call_data));
                         }
+                        let mut thread_finished = thread_finished_poo.lock().unwrap();
+                        *thread_finished +=1;
+                        let _ = sender_update_poo.send(());
                     });
                     receiver_pool.attach(None, move |msg| {
                         match msg {
@@ -795,6 +805,7 @@ fn build_ui(application: &gtk::Application) {
                     });
 
                     let (sender_cc, receiver_cc) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    let (thread_finished_cc, sender_update_cc) = (thread_finished.clone(), sender_updtade.clone());
                     let crm_ccv= crmv.to_owned();
                     thread::spawn(move || {
                         if idsearchvcc != "".to_string() && creditcontractv !="".to_string() {
@@ -804,34 +815,37 @@ fn build_ui(application: &gtk::Application) {
                             for elem in cc_return_data_tmp.iter() {
                                 let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
                                 cc_return_data.push_str(&ser_elem);
-                        }
+                            }
 
-                        let cc_struct = match cc_return_data_tmp {
-                            Ok(contracts) => contracts,
-                            Err(error) => panic!("Problem occured: {:?}", error)
-                        };
-
-                        let mut cc_crm_return_data = String::new();
-                        let param = cc_struct.len();
-                        if param != 0  {
-                            let crm_result = crm_read::crm_cc(&cc_struct);
-                            let crm_list = match crm_result {
-                                Ok(crm) => crm,
+                            let cc_struct = match cc_return_data_tmp {
+                                Ok(contracts) => contracts,
                                 Err(error) => panic!("Problem occured: {:?}", error)
                             };
-                            
-                            let cc_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_ccv);
-                                for elem in cc_crm_return_data_tmp.iter() {
-                                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                                    cc_crm_return_data.push_str(&ser_elem);
-                                }
-                        }
-                        
-                        thread_message.crms = cc_crm_return_data;
-                        thread_message.expos = cc_return_data;
 
-                        let _ = sender_cc.send(thread_message);
+                            let mut cc_crm_return_data = String::new();
+                            let param = cc_struct.len();
+                            if param != 0  {
+                                let crm_result = crm_read::crm_cc(&cc_struct);
+                                let crm_list = match crm_result {
+                                    Ok(crm) => crm,
+                                    Err(error) => panic!("Problem occured: {:?}", error)
+                                };
+                                
+                                let cc_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_ccv);
+                                    for elem in cc_crm_return_data_tmp.iter() {
+                                        let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                        cc_crm_return_data.push_str(&ser_elem);
+                                    }
+                            }
+                        
+                            thread_message.crms = cc_crm_return_data;
+                            thread_message.expos = cc_return_data;
+
+                            let _ = sender_cc.send(thread_message);
                         }
+                        let mut thread_finished = thread_finished_cc.lock().unwrap();
+                        *thread_finished +=1;
+                        let _ = sender_update_cc.send(());
                     });
                     receiver_cc.attach(None, move |msg| {
                         match msg.expos {
@@ -846,6 +860,7 @@ fn build_ui(application: &gtk::Application) {
 
                     // Market Transactions
                     let (sender_mkt, receiver_mkt) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    let (thread_finished_mkt, sender_update_mkt) = (thread_finished.clone(), sender_updtade.clone());
                     let crm_mkt= crmv.to_owned();
                     thread::spawn(move || {
                         if idsearchvmkt != "".to_string() && markettransactv !="".to_string() {
@@ -855,35 +870,38 @@ fn build_ui(application: &gtk::Application) {
                             for elem in mkt_return_data_tmp.iter() {
                                 let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
                                 mkt_return_data.push_str(&ser_elem);
-                        }
+                            }
                 
-                        let mkt_struct = match mkt_return_data_tmp {
-                            Ok(contracts) => contracts,
-                            Err(error) => panic!("Problem occured: {:?}", error)
-                        };
-                
-                        let mut mkt_crm_return_data = String::new();
-                        let param = mkt_struct.len();
-                        if param != 0 {
-                            let crm_result = crm_read::crm_mkt(&mkt_struct);
-                            let crm_list = match crm_result {
-                                Ok(crm) => crm,
+                            let mkt_struct = match mkt_return_data_tmp {
+                                Ok(contracts) => contracts,
                                 Err(error) => panic!("Problem occured: {:?}", error)
                             };
+                    
+                            let mut mkt_crm_return_data = String::new();
+                            let param = mkt_struct.len();
+                            if param != 0 {
+                                let crm_result = crm_read::crm_mkt(&mkt_struct);
+                                let crm_list = match crm_result {
+                                    Ok(crm) => crm,
+                                    Err(error) => panic!("Problem occured: {:?}", error)
+                                };
+                                
+                                let mkt_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_mkt);
+                                    for elem in mkt_crm_return_data_tmp.iter() {
+                                        let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                        mkt_crm_return_data.push_str(&ser_elem);
+                                    }
                             
-                            let mkt_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_mkt);
-                                for elem in mkt_crm_return_data_tmp.iter() {
-                                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                                    mkt_crm_return_data.push_str(&ser_elem);
-                                }
-                        
-                        }
-                        
-                        thread_message.crms = mkt_crm_return_data;
-                        thread_message.expos = mkt_return_data;
+                            }
+                            
+                            thread_message.crms = mkt_crm_return_data;
+                            thread_message.expos = mkt_return_data;
                 
-                        let _ = sender_mkt.send(thread_message);
+                            let _ = sender_mkt.send(thread_message);
                         }
+                        let mut thread_finished = thread_finished_mkt.lock().unwrap();
+                        *thread_finished +=1;
+                        let _ = sender_update_mkt.send(());
                     });
                     receiver_mkt.attach(None, move |msg| {
                         match msg.expos {
@@ -898,6 +916,7 @@ fn build_ui(application: &gtk::Application) {
 
                     //Security Positions
                     let (sender_pos_sec, receiver_pos_sec) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    let (thread_finished_pos_sec, sender_update_pos_sec) = (thread_finished.clone(), sender_updtade.clone());
                     let crm_pos_secv= crmv.to_owned();
                     thread::spawn(move || {
                         if idsearchvsecpos != "".to_string() && securityposv !="".to_string() {
@@ -907,34 +926,37 @@ fn build_ui(application: &gtk::Application) {
                             for elem in pos_sec_return_data_tmp.iter() {
                                 let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
                                 pos_sec_return_data.push_str(&ser_elem);
-                        }
-                        let pos_sec_struct = match pos_sec_return_data_tmp {
-                            Ok(contracts) => contracts,
-                            Err(error) => panic!("Problem occured: {:?}", error)
-                        };
-                
-                        let mut pos_sec_crm_return_data = String::new();
-                        let param = pos_sec_struct.len();
-                        if param != 0 {
-                            let crm_result = crm_read::crm_pos_sec(&pos_sec_struct);
-                            let crm_list = match crm_result {
-                                Ok(crm) => crm,
+                            }
+                            let pos_sec_struct = match pos_sec_return_data_tmp {
+                                Ok(contracts) => contracts,
                                 Err(error) => panic!("Problem occured: {:?}", error)
                             };
+                    
+                            let mut pos_sec_crm_return_data = String::new();
+                            let param = pos_sec_struct.len();
+                            if param != 0 {
+                                let crm_result = crm_read::crm_pos_sec(&pos_sec_struct);
+                                let crm_list = match crm_result {
+                                    Ok(crm) => crm,
+                                    Err(error) => panic!("Problem occured: {:?}", error)
+                                };
+                                
+                                let pos_sec_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_pos_secv);
+                                    for elem in pos_sec_crm_return_data_tmp.iter() {
+                                        let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                        pos_sec_crm_return_data.push_str(&ser_elem);
+                                    }
                             
-                            let pos_sec_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_pos_secv);
-                                for elem in pos_sec_crm_return_data_tmp.iter() {
-                                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                                    pos_sec_crm_return_data.push_str(&ser_elem);
-                                }
-                        
+                            }
+                            
+                            thread_message.crms = pos_sec_crm_return_data;
+                            thread_message.expos = pos_sec_return_data;
+                    
+                            let _ = sender_pos_sec.send(thread_message);
                         }
-                        
-                        thread_message.crms = pos_sec_crm_return_data;
-                        thread_message.expos = pos_sec_return_data;
-                
-                        let _ = sender_pos_sec.send(thread_message);
-                        }
+                        let mut thread_finished = thread_finished_pos_sec.lock().unwrap();
+                        *thread_finished +=1;
+                        let _ = sender_update_pos_sec.send(());
                     });
                     receiver_pos_sec.attach(None, move |msg| {
                         match msg.expos {
@@ -949,6 +971,7 @@ fn build_ui(application: &gtk::Application) {
 
                     //Securitization Programs
                     let (sender_sec_pgm, receiver_sec_pgm) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    let (thread_finished_pgm, sender_update_pgm) = (thread_finished.clone(), sender_updtade.clone());
                     let crm_sec_pgmv= crmv.to_owned();
                     thread::spawn(move || {
                         if idsearchvsecprog != "".to_string() && securitizationpgmv !="".to_string() {
@@ -958,34 +981,37 @@ fn build_ui(application: &gtk::Application) {
                             for elem in sec_pgm_return_data_tmp.iter() {
                                 let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
                                 sec_pgm_return_data.push_str(&ser_elem);
-                        }
-                        let sec_pgm_struct = match sec_pgm_return_data_tmp {
-                            Ok(contracts) => contracts,
-                            Err(error) => panic!("Problem occured: {:?}", error)
-                        };
-                
-                        let mut sec_pgm_crm_return_data = String::new();
-                        let param = sec_pgm_struct.len();
-                        if param != 0 {
-                            let crm_result = crm_read::crm_pgm_sec(&sec_pgm_struct);
-                            let crm_list = match crm_result {
-                                Ok(crm) => crm,
+                            }
+                            let sec_pgm_struct = match sec_pgm_return_data_tmp {
+                                Ok(contracts) => contracts,
                                 Err(error) => panic!("Problem occured: {:?}", error)
                             };
+                    
+                            let mut sec_pgm_crm_return_data = String::new();
+                            let param = sec_pgm_struct.len();
+                            if param != 0 {
+                                let crm_result = crm_read::crm_pgm_sec(&sec_pgm_struct);
+                                let crm_list = match crm_result {
+                                    Ok(crm) => crm,
+                                    Err(error) => panic!("Problem occured: {:?}", error)
+                                };
+                                
+                                let sec_pgm_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_sec_pgmv);
+                                    for elem in sec_pgm_crm_return_data_tmp.iter() {
+                                        let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
+                                        sec_pgm_crm_return_data.push_str(&ser_elem);
+                                    }
                             
-                            let sec_pgm_crm_return_data_tmp = crm_read::crm_load(&crm_list ,&crm_sec_pgmv);
-                                for elem in sec_pgm_crm_return_data_tmp.iter() {
-                                    let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
-                                    sec_pgm_crm_return_data.push_str(&ser_elem);
-                                }
-                        
+                            }
+                            
+                            thread_message.crms = sec_pgm_crm_return_data;
+                            thread_message.expos = sec_pgm_return_data;
+                    
+                            let _ = sender_sec_pgm.send(thread_message);
                         }
-                        
-                        thread_message.crms = sec_pgm_crm_return_data;
-                        thread_message.expos = sec_pgm_return_data;
-                
-                        let _ = sender_sec_pgm.send(thread_message);
-                        }
+                        let mut thread_finished = thread_finished_pgm.lock().unwrap();
+                        *thread_finished +=1;
+                        let _ = sender_update_pgm.send(());
                     });
                     receiver_sec_pgm.attach(None, move |msg| {
                         match msg.expos {
@@ -1000,6 +1026,7 @@ fn build_ui(application: &gtk::Application) {
 
                     //Crms Specific
                     let (sender_crm, receiver_crm) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4000);
+                    let (thread_finished_crm, sender_update_crm) = (thread_finished.clone(), sender_updtade.clone());
                     thread::spawn(move || {
                         if crmv != "".to_string() && idcrmv !="".to_string() {
                             let mut thread_message = Message::new();
@@ -1008,12 +1035,15 @@ fn build_ui(application: &gtk::Application) {
                             for elem in crm_return_data_tmp.iter() {
                                 let ser_elem = serde_json::to_string_pretty(&elem).unwrap();
                                 crm_return_data.push_str(&ser_elem);
-                        }
+                            }
                         
-                        thread_message.expos = crm_return_data;
+                            thread_message.expos = crm_return_data;
                 
-                        let _ = sender_crm.send(thread_message);
+                            let _ = sender_crm.send(thread_message);
                         }
+                        let mut thread_finished = thread_finished_crm.lock().unwrap();
+                        *thread_finished +=1;
+                        let _ = sender_update_crm.send(());
                     });
                     receiver_crm.attach(None, move |msg| {
                         match msg.expos {
@@ -1022,6 +1052,17 @@ fn build_ui(application: &gtk::Application) {
                         
                         glib::Continue(true)
                     });
+
+                    //receiver update
+                    receiver_update.attach(None, move |_msg| {
+                        if *thread_finished.lock().unwrap() == 6 {
+                            update_message.set_text("Search finished");
+                            update_spinner.stop()
+                        }
+                        
+                        glib::Continue(true)
+                    });
+
                 } 
                 else {
                     update_message.set_text("you need to provide a folder")
